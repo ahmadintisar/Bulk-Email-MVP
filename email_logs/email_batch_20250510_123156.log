@@ -1,0 +1,25 @@
+2025-05-10 12:31:56,725 - INFO - Initialized BulkEmailSender with from_email: origination@clean-earth.org
+2025-05-10 12:31:56,729 - INFO - Read 1 recipients from temp_recipients.csv
+2025-05-10 12:31:56,729 - INFO - Read template from templates/temp_template.html
+2025-05-10 12:31:56,730 - INFO - Sending email to beatzzz.ahmad@gmail.com with subject: Trackin Solar
+2025-05-10 12:31:58,011 - INFO - Email sent successfully to beatzzz.ahmad@gmail.com. Status code: 202
+2025-05-10 12:31:58,012 - INFO - Response headers: Server: nginx
+Date: Sat, 10 May 2025 07:31:58 GMT
+Content-Length: 0
+Connection: close
+X-Message-Id: l8HkBpYhTyWO5xe5iFOFHQ
+Access-Control-Allow-Origin: https://sendgrid.api-docs.io
+Access-Control-Allow-Methods: POST
+Access-Control-Allow-Headers: Authorization, Content-Type, On-behalf-of, x-sg-elas-acl
+Access-Control-Max-Age: 600
+X-No-CORS-Reason: https://sendgrid.com/docs/Classroom/Basics/API/cors.html
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Content-Security-Policy: frame-ancestors 'none'
+Cache-Control: no-cache
+X-Content-Type-Options: no-sniff
+Referrer-Policy: strict-origin-when-cross-origin
+
+
+2025-05-10 12:31:58,013 - DEBUG - Full response: {'_status_code': 202, '_body': b'', '_headers': <http.client.HTTPMessage object at 0x104e41b30>}
+2025-05-10 12:31:58,013 - INFO - Bulk email sending completed. Successfully sent: 1/1
+2025-05-10 12:31:58,014 - INFO - Batch summary saved to email_logs/email_batch_20250510_123156_summary.json

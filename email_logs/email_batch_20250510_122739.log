@@ -1,0 +1,25 @@
+2025-05-10 12:27:39,479 - INFO - Initialized BulkEmailSender with from_email: origination@clean-earth.org
+2025-05-10 12:27:39,484 - INFO - Read 1 recipients from temp_recipients.csv
+2025-05-10 12:27:39,484 - INFO - Read template from templates/temp_template.html
+2025-05-10 12:27:39,486 - INFO - Sending email to beatzzz.ahmad@gmail.com with subject: Pooop
+2025-05-10 12:27:41,305 - INFO - Email sent successfully to beatzzz.ahmad@gmail.com. Status code: 202
+2025-05-10 12:27:41,310 - INFO - Response headers: Server: nginx
+Date: Sat, 10 May 2025 07:27:41 GMT
+Content-Length: 0
+Connection: close
+X-Message-Id: vjYWxLy3TeqYfMnucIgXZQ
+Access-Control-Allow-Origin: https://sendgrid.api-docs.io
+Access-Control-Allow-Methods: POST
+Access-Control-Allow-Headers: Authorization, Content-Type, On-behalf-of, x-sg-elas-acl
+Access-Control-Max-Age: 600
+X-No-CORS-Reason: https://sendgrid.com/docs/Classroom/Basics/API/cors.html
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Content-Security-Policy: frame-ancestors 'none'
+Cache-Control: no-cache
+X-Content-Type-Options: no-sniff
+Referrer-Policy: strict-origin-when-cross-origin
+
+
+2025-05-10 12:27:41,310 - DEBUG - Full response: {'_status_code': 202, '_body': b'', '_headers': <http.client.HTTPMessage object at 0x104e1ccb0>}
+2025-05-10 12:27:41,310 - INFO - Bulk email sending completed. Successfully sent: 1/1
+2025-05-10 12:27:41,311 - INFO - Batch summary saved to email_logs/email_batch_20250510_122739_summary.json

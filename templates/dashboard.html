@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - Clean Earth Renewables{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-chart-line me-2"></i>Email Analytics Dashboard</h2>
+                <div class="d-flex align-items-center">
+                    <div class="form-check form-switch me-3">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                        <label class="form-check-label" for="autoRefresh">Auto-refresh</label>
+                    </div>
+                    <button class="btn btn-primary" id="refreshBtn">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>{{ global_stats.delivered|default(0) }}</h3>
+                <p>Total Emails Sent</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>{{ "%.1f"|format(global_stats.open_rate|default(0)) }}%</h3>
+                <p>Open Rate</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>{{ "%.1f"|format(global_stats.click_rate|default(0)) }}%</h3>
+                <p>Click Rate</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>{{ "%.1f"|format(global_stats.bounce_rate|default(0)) }}%</h3>
+                <p>Bounce Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-line me-2"></i>Email Activity Over Time</h5>
+                    <div id="activityChart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-bar me-2"></i>Delivery Statistics</h5>
+                    <div id="deliveryChart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Delivered</th>
+                                    <th>Opens</th>
+                                    <th>Clicks</th>
+                                    <th>Bounces</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in daily_stats %}
+                                <tr>
+                                    <td>{{ stat.date }}</td>
+                                    <td>{{ stat.stats[0].metrics.delivered }}</td>
+                                    <td>{{ stat.stats[0].metrics.opens }}</td>
+                                    <td>{{ stat.stats[0].metrics.clicks }}</td>
+                                    <td>{{ stat.stats[0].metrics.bounces }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize charts
+    const activityChart = document.getElementById('activityChart');
+    const deliveryChart = document.getElementById('deliveryChart');
+    
+    Plotly.newPlot(activityChart, {{ activity_chart_data|tojson|safe }}, {
+        title: 'Email Activity Over Time',
+        margin: { t: 30, r: 30, l: 50, b: 50 },
+        showlegend: true,
+        legend: { orientation: 'h', y: -0.2 },
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Count' }
+    });
+    
+    Plotly.newPlot(deliveryChart, {{ delivery_chart_data|tojson|safe }}, {
+        title: 'Delivery Statistics',
+        margin: { t: 30, r: 30, l: 50, b: 50 },
+        showlegend: true,
+        legend: { orientation: 'h', y: -0.2 },
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Count' },
+        barmode: 'stack'
+    });
+
+    // Auto-refresh functionality
+    let autoRefreshInterval;
+    const refreshBtn = document.getElementById('refreshBtn');
+    const autoRefreshToggle = document.getElementById('autoRefresh');
+
+    function startAutoRefresh() {
+        autoRefreshInterval = setInterval(refreshData, 20000);
+    }
+
+    function stopAutoRefresh() {
+        clearInterval(autoRefreshInterval);
+    }
+
+    function refreshData() {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
+        
+        fetch('/dashboard/refresh')
+            .then(response => response.json())
+            .then(data => {
+                // Update summary cards
+                document.querySelector('.stat-card:nth-child(1) h3').textContent = data.global_stats.delivered || 0;
+                document.querySelector('.stat-card:nth-child(2) h3').textContent = (data.global_stats.open_rate || 0).toFixed(1) + '%';
+                document.querySelector('.stat-card:nth-child(3) h3').textContent = (data.global_stats.click_rate || 0).toFixed(1) + '%';
+                document.querySelector('.stat-card:nth-child(4) h3').textContent = (data.global_stats.bounce_rate || 0).toFixed(1) + '%';
+
+                // Update charts
+                Plotly.react(activityChart, data.activity_chart_data);
+                Plotly.react(deliveryChart, data.delivery_chart_data);
+
+                // Update table
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = data.daily_stats.map(stat => `
+                    <tr>
+                        <td>${stat.date}</td>
+                        <td>${stat.stats[0].metrics.delivered}</td>
+                        <td>${stat.stats[0].metrics.opens}</td>
+                        <td>${stat.stats[0].metrics.clicks}</td>
+                        <td>${stat.stats[0].metrics.bounces}</td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Error refreshing data:', error);
+                alert('Error refreshing data. Please try again.');
+            })
+            .finally(() => {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Refresh Data';
+            });
+    }
+
+    refreshBtn.addEventListener('click', refreshData);
+    autoRefreshToggle.addEventListener('change', function() {
+        if (this.checked) {
+            startAutoRefresh();
+        } else {
+            stopAutoRefresh();
+        }
+    });
+
+    // Start auto-refresh if enabled
+    if (autoRefreshToggle.checked) {
+        startAutoRefresh();
+    }
+</script>
+{% endblock %} 
