@@ -9,13 +9,10 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h2><i class="fas fa-chart-line me-2"></i>Email Analytics Dashboard</h2>
                 <div class="d-flex align-items-center">
-                    <div class="form-check form-switch me-3">
+                    <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
                         <label class="form-check-label" for="autoRefresh">Auto-refresh</label>
                     </div>
-                    <button class="btn btn-primary" id="refreshBtn">
-                        <i class="fas fa-sync-alt me-2"></i>Refresh Data
-                    </button>
                 </div>
             </div>
         </div>
@@ -133,7 +130,6 @@
 
     // Auto-refresh functionality
     let autoRefreshInterval;
-    const refreshBtn = document.getElementById('refreshBtn');
     const autoRefreshToggle = document.getElementById('autoRefresh');
 
     function startAutoRefresh() {
@@ -145,9 +141,6 @@
     }
 
     function refreshData() {
-        refreshBtn.disabled = true;
-        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
-        
         fetch('/dashboard/refresh')
             .then(response => response.json())
             .then(data => {
@@ -175,15 +168,9 @@
             })
             .catch(error => {
                 console.error('Error refreshing data:', error);
-                alert('Error refreshing data. Please try again.');
-            })
-            .finally(() => {
-                refreshBtn.disabled = false;
-                refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Refresh Data';
             });
     }
-
-    refreshBtn.addEventListener('click', refreshData);
+    
     autoRefreshToggle.addEventListener('change', function() {
         if (this.checked) {
             startAutoRefresh();

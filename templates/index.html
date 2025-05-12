@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Send Emails - Clean Earth Renewables{% endblock %}
+{% block title %}Email Campaign - Clean Earth Renewables{% endblock %}
 
 {% block content %}
 <div class="main-container">
     <div class="row">
         <div class="col-md-8 mx-auto">
             <div class="text-center mb-4">
-                <h2 class="mb-3"><i class="fas fa-envelope me-2"></i>Send Emails</h2>
+                <h2 class="mb-3"><i class="fas fa-envelope me-2"></i>Email Campaign</h2>
                 <p class="text-muted">Send bulk emails to your recipients using our professional templates.</p>
             </div>
 
@@ -65,7 +65,10 @@
                             <label class="form-label">
                                 <i class="fas fa-heading me-2"></i>{{ form.subject.label }}
                             </label>
-                            {{ form.subject(class="form-control", placeholder="Enter email subject") }}
+                            {{ form.subject(class="form-control", placeholder="Enter email subject", readonly=true) }}
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Subject will be automatically set based on the selected template.
+                            </small>
                             {% if form.subject.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in form.subject.errors %}
@@ -77,12 +80,12 @@
 
                         <div class="mb-4">
                             <label class="form-label">
-                                <i class="fas fa-comment me-2"></i>{{ form.custom_message.label }}
+                                <i class="fas fa-envelope me-2"></i>{{ form.template.label }}
                             </label>
-                            {{ form.custom_message(class="form-control", rows="4", placeholder="Enter your additional message (optional)") }}
-                            {% if form.custom_message.errors %}
+                            {{ form.template(class="form-select", onchange="updateSubject(this)") }}
+                            {% if form.template.errors %}
                                 <div class="text-danger mt-1">
-                                    {% for error in form.custom_message.errors %}
+                                    {% for error in form.template.errors %}
                                         {{ error }}
                                     {% endfor %}
                                 </div>
@@ -112,4 +115,49 @@
         </div>
     </div>
 </div>
+
+<script>
+const templateHeaders = {
+    'email_template.html': 'Enroll_ {name} for Community Solar & Start Saving Today',
+    'template-2.html': 'RE: Enroll_ {name} for Community Solar & Start Saving',
+    'template-3.html': 'Follow-up: Enroll_ {name} for Community Solar & Start Saving',
+    'template-4.html': 'Reminder: Enroll_ {name} for Community Solar & Start Saving'
+};
+
+function updateSubject(selectElement) {
+    const subjectField = document.querySelector('input[name="subject"]');
+    const template = selectElement.value;
+    
+    // Send AJAX request to get the updated subject
+    fetch('{{ url_for("index") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: `template=${encodeURIComponent(template)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.subject) {
+            subjectField.value = data.subject;
+        } else {
+            console.error('Error updating subject:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Fallback to client-side update if AJAX fails
+        subjectField.value = templateHeaders[template].format(name='');
+    });
+}
+
+// Initialize subject on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const templateSelect = document.querySelector('select[name="template"]');
+    if (templateSelect) {
+        updateSubject(templateSelect);
+    }
+});
+</script>
 {% endblock %} 

@@ -70,7 +70,7 @@ python app.py
 2. Access the web interface at `http://localhost:5000`
 
 3. Navigate between pages:
-   - **Send Emails**: Compose and send bulk emails
+   - **Email Campaign**: Compose and send bulk emails
    - **Dashboard**: View email analytics and performance metrics
 
 ## Email Sending
@@ -78,7 +78,7 @@ python app.py
 1. Enter recipient email addresses (one per line)
 2. Add a subject line
 3. Include an optional custom message
-4. Click "Send Emails" to deliver
+4. Click "Send Campaign" to deliver
 
 ## Analytics Dashboard
 
