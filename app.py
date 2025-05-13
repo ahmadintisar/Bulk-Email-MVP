@@ -16,6 +16,8 @@ from sendgrid.helpers.mail import Mail, Email, To, Content
 import json
 import pytz
 import uuid
+import glob
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -72,17 +74,24 @@ def index():
 
     if form.validate_on_submit():
         try:
+            # Initialize BulkEmailSender for logging
+            email_sender = BulkEmailSender()
+            logger.info("Starting new email campaign")
+            
             # Get recipients from either text area or file
             recipients = []
             email_name_map = {}  # Dictionary to store email-name mappings
             
             if form.recipients.data:
+                logger.info("Processing manual email entries")
                 recipients.extend([email.strip() for email in form.recipients.data.split('\n') if email.strip()])
                 # For manual entries, use email username as name
                 for email in recipients:
                     email_name_map[email] = email.split('@')[0]
+                logger.info(f"Processed {len(recipients)} manual email entries")
             
             if form.excel_file.data:
+                logger.info(f"Processing uploaded file: {form.excel_file.data.filename}")
                 file_emails, file_email_name_map = extract_emails_from_file(form.excel_file.data)
                 recipients.extend(file_emails)
                 # Update the email-name mapping with file data
@@ -91,8 +100,10 @@ def index():
                 for email in file_emails:
                     if email not in email_name_map:
                         email_name_map[email] = email.split('@')[0]
+                logger.info(f"Processed {len(file_emails)} emails from file")
             
             if not recipients:
+                logger.warning("No recipients provided")
                 flash('Please provide recipients either in the text area or upload a file.', 'error')
                 return redirect(url_for('index'))
             
@@ -100,6 +111,7 @@ def index():
             recipients = list(set(recipients))
             invalid_emails = [email for email in recipients if not '@' in email]
             if invalid_emails:
+                logger.warning(f"Found invalid email addresses: {invalid_emails}")
                 flash(f'Invalid email addresses found: {", ".join(invalid_emails)}', 'error')
                 return redirect(url_for('index'))
             
@@ -116,6 +128,15 @@ def index():
             success_count = 0
             failed_recipients = []
             
+            # Update batch data
+            email_sender.batch_data.update({
+                'total_emails': len(recipients),
+                'subject': form.subject.data,
+                'template': form.template.data,
+                'source': 'manual' if form.recipients.data else 'file',
+                'file_name': form.excel_file.data.filename if form.excel_file.data else None
+            })
+            
             for recipient in recipients:
                 to_email = To(recipient)
                 # Get the name for this recipient from the mapping
@@ -127,14 +148,38 @@ def index():
                     response = sg.send(mail)
                     if response.status_code == 202:
                         success_count += 1
-                        logger.debug(f"Email sent to {recipient} with subject: {subject}")
+                        logger.info(f"Email sent successfully to {recipient}")
+                        email_sender.batch_data['successful_emails'] += 1
+                        email_sender.batch_data['recipients'].append({
+                            'email': recipient,
+                            'status': 'success',
+                            'timestamp': datetime.now().isoformat(),
+                            'response_code': response.status_code
+                        })
                     else:
                         failed_recipients.append(f"{recipient} (Status: {response.status_code})")
                         logger.error(f"Failed to send email to {recipient}: {response.status_code}")
+                        email_sender.batch_data['failed_emails'] += 1
+                        email_sender.batch_data['recipients'].append({
+                            'email': recipient,
+                            'status': 'failed',
+                            'timestamp': datetime.now().isoformat(),
+                            'error': f"Status code: {response.status_code}"
+                        })
                 except Exception as e:
                     failed_recipients.append(f"{recipient} ({str(e)})")
                     logger.error(f"Error sending email to {recipient}: {str(e)}")
+                    email_sender.batch_data['failed_emails'] += 1
+                    email_sender.batch_data['recipients'].append({
+                        'email': recipient,
+                        'status': 'failed',
+                        'timestamp': datetime.now().isoformat(),
+                        'error': str(e)
+                    })
                     continue
+            
+            # Save batch summary
+            email_sender.save_batch_summary()
             
             # Show appropriate success/error messages
             if success_count > 0:
@@ -380,6 +425,69 @@ def refresh_dashboard():
         logger.error(f"Error in refresh_dashboard: {error_msg}", exc_info=True)
         return jsonify({'error': error_msg}), 500
 
+def get_batch_logs():
+    """Get all batch logs from the email_logs directory"""
+    try:
+        # Get all log files
+        log_files = glob.glob(os.path.join('email_logs', 'email_batch_*.log'))
+        batch_data = []
+        
+        for log_file in sorted(log_files, reverse=True):  # Sort by newest first
+            # Get corresponding summary file
+            summary_file = log_file.replace('.log', '_summary.json')
+            
+            # Read summary data if exists
+            summary_data = {}
+            if os.path.exists(summary_file):
+                with open(summary_file, 'r') as f:
+                    summary_data = json.load(f)
+            
+            # Read log file
+            with open(log_file, 'r') as f:
+                log_content = f.read()
+            
+            # Extract timestamp from filename
+            timestamp_match = re.search(r'email_batch_(\d{8}_\d{6})', log_file)
+            if timestamp_match:
+                timestamp = timestamp_match.group(1)
+                formatted_time = datetime.strptime(timestamp, '%Y%m%d_%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                formatted_time = "Unknown"
+            
+            # Get batch ID from summary or generate from filename
+            batch_id = summary_data.get('campaign_id', timestamp)
+            
+            batch_data.append({
+                'batch_id': batch_id,
+                'timestamp': formatted_time,
+                'total_emails': summary_data.get('total_emails', 0),
+                'successful_emails': summary_data.get('successful_emails', 0),
+                'failed_emails': summary_data.get('failed_emails', 0),
+                'success_rate': summary_data.get('success_rate', '0%'),
+                'source': summary_data.get('source', 'unknown'),
+                'file_name': summary_data.get('file_name', 'N/A'),
+                'subject': summary_data.get('subject', 'N/A'),
+                'template': summary_data.get('template', 'N/A'),
+                'processing_time': summary_data.get('processing_time', 'N/A'),
+                'log_content': log_content
+            })
+        
+        return batch_data
+    except Exception as e:
+        logger.error(f"Error reading batch logs: {str(e)}", exc_info=True)
+        return []
+
+@app.route('/batch-activity')
+def batch_activity():
+    try:
+        batch_data = get_batch_logs()
+        return render_template('batch_activity.html', batches=batch_data)
+    except Exception as e:
+        error_msg = f'Error loading batch activity: {str(e)}'
+        logger.error(error_msg, exc_info=True)
+        flash(error_msg, 'error')
+        return redirect(url_for('index'))
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8000))
     app.run(debug=True, host='0.0.0.0', port=port)

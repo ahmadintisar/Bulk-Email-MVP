@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import logging
 from datetime import datetime
 import json
+import uuid
 
 # Create logs directory if it doesn't exist
 LOGS_DIR = 'email_logs'
@@ -55,7 +56,15 @@ class BulkEmailSender:
             'successful_emails': 0,
             'failed_emails': 0,
             'recipients': [],
-            'errors': []
+            'errors': [],
+            'source': None,  # 'manual' or 'file'
+            'file_name': None,  # Name of uploaded file if source is 'file'
+            'subject': None,
+            'template': None,
+            'campaign_id': str(uuid.uuid4()),  # Unique identifier for the campaign
+            'start_time': datetime.now().isoformat(),
+            'end_time': None,
+            'processing_time': None
         }
 
     def send_email(self, to_email, subject, html_content):
@@ -74,6 +83,7 @@ class BulkEmailSender:
             message.add_header(Header("X-Message-ID", f"<{to_email}-{int(pd.Timestamp.now().timestamp())}@clean-earth.org>"))
             message.add_header(Header("List-Unsubscribe", "<mailto:unsubscribe@clean-earth.org>"))
             message.add_header(Header("Precedence", "bulk"))
+            message.add_header(Header("X-Campaign-ID", self.batch_data['campaign_id']))
             
             # Set reply-to header
             message.reply_to = Email("david.e@clean-earth.org", "David E")
@@ -92,7 +102,8 @@ class BulkEmailSender:
                 'email': to_email,
                 'status': 'success',
                 'timestamp': datetime.now().isoformat(),
-                'response_code': response.status_code
+                'response_code': response.status_code,
+                'message_id': response.headers.get('X-Message-Id', '')
             })
             
             return True
@@ -163,10 +174,32 @@ class BulkEmailSender:
         """
         Save a JSON summary of the batch
         """
+        # Update end time and processing time
+        end_time = datetime.now()
+        self.batch_data['end_time'] = end_time.isoformat()
+        start_time = datetime.fromisoformat(self.batch_data['start_time'])
+        self.batch_data['processing_time'] = str(end_time - start_time)
+        
+        # Calculate success rate
+        total = self.batch_data['total_emails']
+        if total > 0:
+            success_rate = (self.batch_data['successful_emails'] / total) * 100
+            self.batch_data['success_rate'] = f"{success_rate:.2f}%"
+        
+        # Save summary to JSON file
         summary_file = self.log_file.replace('.log', '_summary.json')
         with open(summary_file, 'w') as f:
             json.dump(self.batch_data, f, indent=2)
         self.logger.info(f"Batch summary saved to {summary_file}")
+        
+        # Log final statistics
+        self.logger.info(f"Campaign completed - ID: {self.batch_data['campaign_id']}")
+        self.logger.info(f"Total emails: {total}")
+        self.logger.info(f"Successful: {self.batch_data['successful_emails']}")
+        self.logger.info(f"Failed: {self.batch_data['failed_emails']}")
+        if total > 0:
+            self.logger.info(f"Success rate: {self.batch_data['success_rate']}")
+        self.logger.info(f"Processing time: {self.batch_data['processing_time']}")
 
 def main():
     # Example usage

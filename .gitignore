@@ -38,3 +38,6 @@ diana/
 # Temporary files
 temp_recipients.csv
 templates/temp_template.html 
+
+# Email logs
+email_logs/

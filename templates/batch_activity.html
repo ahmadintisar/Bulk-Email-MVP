@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Activity - Clean Earth Renewables{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="text-center mb-4">
+                <h2 class="mb-3"><i class="fas fa-history me-2"></i>Recent Batch Activity</h2>
+                <p class="text-muted">View detailed logs of your recent email campaigns.</p>
+            </div>
+
+            {% if batches %}
+                {% for batch in batches %}
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-envelope me-2"></i>Batch ID: {{ batch.batch_id }}
+                            </h5>
+                            <span class="badge {% if batch.success_rate == '100.00%' %}bg-success{% elif batch.success_rate == '0%' %}bg-danger{% else %}bg-warning{% endif %}">
+                                {{ batch.success_rate }} Success Rate
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <strong><i class="fas fa-clock me-2"></i>Timestamp:</strong>
+                                <p>{{ batch.timestamp }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong><i class="fas fa-envelope-open me-2"></i>Total Emails:</strong>
+                                <p>{{ batch.total_emails }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong><i class="fas fa-check-circle me-2"></i>Successful:</strong>
+                                <p>{{ batch.successful_emails }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong><i class="fas fa-times-circle me-2"></i>Failed:</strong>
+                                <p>{{ batch.failed_emails }}</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <strong><i class="fas fa-file-upload me-2"></i>Source:</strong>
+                                <p>{{ batch.source|title }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <strong><i class="fas fa-file me-2"></i>File Name:</strong>
+                                <p>{{ batch.file_name }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <strong><i class="fas fa-clock me-2"></i>Processing Time:</strong>
+                                <p>{{ batch.processing_time }}</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong><i class="fas fa-heading me-2"></i>Subject:</strong>
+                                <p>{{ batch.subject }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong><i class="fas fa-file-alt me-2"></i>Template:</strong>
+                                <p>{{ batch.template }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#logContent{{ loop.index }}" aria-expanded="false">
+                                <i class="fas fa-list me-2"></i>View Detailed Logs
+                            </button>
+                            <div class="collapse mt-3" id="logContent{{ loop.index }}">
+                                <div class="card card-body bg-light">
+                                    <pre class="mb-0" style="white-space: pre-wrap;">{{ batch.log_content }}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No batch activity logs found.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
