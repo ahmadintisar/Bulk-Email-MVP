@@ -28,7 +28,20 @@
                         <div class="row mb-3">
                             <div class="col-md-3">
                                 <strong><i class="fas fa-clock me-2"></i>Timestamp:</strong>
-                                <p>{{ batch.timestamp }}</p>
+                                <div class="timestamp-info">
+                                    <p class="mb-1">
+                                        <span class="badge bg-primary">PKT</span>
+                                        {{ batch.timestamp.split(' / ')[0] }}
+                                    </p>
+                                    <p class="mb-1">
+                                        <span class="badge bg-info">EST</span>
+                                        {{ batch.timestamp.split(' / ')[1] }}
+                                    </p>
+                                    <p class="mb-0">
+                                        <span class="badge bg-info">PST</span>
+                                        {{ batch.timestamp.split(' / ')[2] }}
+                                    </p>
+                                </div>
                             </div>
                             <div class="col-md-3">
                                 <strong><i class="fas fa-envelope-open me-2"></i>Total Emails:</strong>
