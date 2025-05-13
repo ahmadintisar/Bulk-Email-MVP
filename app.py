@@ -432,10 +432,8 @@ def get_batch_logs():
         log_files = glob.glob(os.path.join('email_logs', 'email_batch_*.log'))
         batch_data = []
         
-        # Define timezones
+        # Define timezone
         pkt_tz = pytz.timezone('Asia/Karachi')  # Pakistan Standard Time
-        est_tz = pytz.timezone('US/Eastern')
-        pst_tz = pytz.timezone('US/Pacific')
         
         for log_file in sorted(log_files, reverse=True):  # Sort by newest first
             # Get corresponding summary file
@@ -459,11 +457,7 @@ def get_batch_logs():
                 dt = datetime.strptime(timestamp, '%Y%m%d_%H%M%S')
                 # Make it timezone-aware in PKT
                 dt = pkt_tz.localize(dt)
-                # Convert to EST and PST
-                est_time = dt.astimezone(est_tz).strftime('%Y-%m-%d %H:%M:%S %Z')
-                pst_time = dt.astimezone(pst_tz).strftime('%Y-%m-%d %H:%M:%S %Z')
-                pkt_time = dt.strftime('%Y-%m-%d %H:%M:%S %Z')
-                formatted_time = f"{pkt_time} / {est_time} / {pst_time}"
+                formatted_time = dt.strftime('%Y-%m-%d %H:%M:%S %Z')
             else:
                 formatted_time = "Unknown"
             
