@@ -453,11 +453,13 @@ def get_batch_logs():
             timestamp_match = re.search(r'email_batch_(\d{8}_\d{6})', log_file)
             if timestamp_match:
                 timestamp = timestamp_match.group(1)
-                # Parse the timestamp and assume it's in PKT
+                # Parse the timestamp and assume it's in UTC (server time)
                 dt = datetime.strptime(timestamp, '%Y%m%d_%H%M%S')
-                # Make it timezone-aware in PKT
-                dt = pkt_tz.localize(dt)
-                formatted_time = dt.strftime('%Y-%m-%d %H:%M:%S %Z')
+                # Make it timezone-aware in UTC
+                dt = pytz.UTC.localize(dt)
+                # Convert to PKT
+                dt_pkt = dt.astimezone(pkt_tz)
+                formatted_time = dt_pkt.strftime('%Y-%m-%d %H:%M:%S %Z')
             else:
                 formatted_time = "Unknown"
             
