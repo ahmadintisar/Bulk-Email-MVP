@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify, session
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, TextAreaField, SubmitField, SelectField
+from wtforms import StringField, TextAreaField, SubmitField, SelectField, PasswordField
 from wtforms.validators import DataRequired, Email, Optional
 from bulk_email_sender import BulkEmailSender
 from sendgrid_analytics import SendGridAnalytics
@@ -18,6 +18,7 @@ import pytz
 import uuid
 import glob
 import re
+from functools import wraps
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -31,6 +32,50 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Set Pakistan timezone
 PAKISTAN_TZ = pytz.timezone('Asia/Karachi')
+
+# Predefined users (in a real application, these would be stored in a database)
+USERS = {
+    'origination@clean-earth.org': 'admin123'
+}
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'username' in session:
+        return redirect(url_for('index'))
+    
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        
+        if username in USERS and USERS[username] == password:
+            session['username'] = username
+            flash('Successfully logged in!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password.', 'error')
+    
+    return render_template('login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
 
 class EmailForm(FlaskForm):
     recipients = TextAreaField('Recipients', validators=[Optional()])
@@ -60,6 +105,7 @@ class EmailForm(FlaskForm):
         self.subject.data = self.TEMPLATE_HEADERS['email_template.html'].format(name='')
 
 @app.route('/', methods=['GET', 'POST'])
+@login_required
 def index():
     form = EmailForm()
     
@@ -401,6 +447,7 @@ def get_dashboard_data():
         raise
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     try:
         data = get_dashboard_data()
@@ -416,6 +463,7 @@ def dashboard():
         return redirect(url_for('index'))
 
 @app.route('/dashboard/refresh')
+@login_required
 def refresh_dashboard():
     try:
         data = get_dashboard_data()
@@ -487,6 +535,7 @@ def get_batch_logs():
         return []
 
 @app.route('/batch-activity')
+@login_required
 def batch_activity():
     try:
         batch_data = get_batch_logs()

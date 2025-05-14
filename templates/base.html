@@ -155,12 +155,17 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    {% if session.username %}
                     <li class="nav-item">
                         <a class="nav-link" href="/"><i class="fas fa-envelope me-1"></i>Email Campaign</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard"><i class="fas fa-chart-line me-1"></i>Dashboard</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

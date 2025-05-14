@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Clean Earth Renewables{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="main-container">
+            <h2 class="text-center mb-4">Login</h2>
+            <form method="POST" action="{{ url_for('login') }}">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.username.label(class="form-label") }}
+                    {{ form.username(class="form-control", placeholder="Enter your username") }}
+                </div>
+                <div class="mb-3">
+                    {{ form.password.label(class="form-label") }}
+                    {{ form.password(class="form-control", placeholder="Enter your password") }}
+                </div>
+                <div class="d-grid gap-2">
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-link" id="signupBtn">Request Access</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('signupBtn').addEventListener('click', function() {
+    // Create and show flash message
+    const flashDiv = document.createElement('div');
+    flashDiv.className = 'alert alert-info alert-dismissible fade show';
+    flashDiv.innerHTML = `
+        Request access from Origination Renewables
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.flash-messages').appendChild(flashDiv);
+    
+    // Remove flash message after 3 seconds
+    setTimeout(() => {
+        flashDiv.remove();
+    }, 3000);
+});
+</script>
+{% endblock %} 
