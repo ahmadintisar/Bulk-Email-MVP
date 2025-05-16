@@ -188,7 +188,9 @@ def index():
                 # Get the name for this recipient from the mapping
                 name = email_name_map.get(recipient, recipient.split('@')[0])
                 subject = form.TEMPLATE_HEADERS[form.template.data].format(name=name)
-                content = Content("text/html", email_content)
+                # Replace {Name} in the email content with the recipient's name
+                personalized_content = email_content.replace('{Name}', name)
+                content = Content("text/html", personalized_content)
                 mail = Mail(from_email, to_email, subject, content)
                 try:
                     response = sg.send(mail)
