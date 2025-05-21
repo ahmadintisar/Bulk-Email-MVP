@@ -83,12 +83,26 @@ class EmailForm(FlaskForm):
         FileAllowed(['xlsx', 'xls', 'csv'], 'Only Excel and CSV files are allowed!')
     ])
     subject = StringField('Subject', validators=[DataRequired()])
+    template_type = SelectField('Template Type', choices=[
+        ('predefined', 'Use Predefined Template'),
+        ('custom', 'Upload Custom Template')
+    ], validators=[DataRequired()])
     template = SelectField('Email Template', choices=[
         ('email_template.html', 'Template 1'),
         ('template-2.html', 'Template 2'),
         ('template-3.html', 'Template 3'),
         ('template-4.html', 'Template 4')
-    ], validators=[DataRequired()])
+    ], validators=[Optional()])
+    custom_template = FileField('Custom Template', validators=[
+        FileAllowed(['html'], 'Only HTML files are allowed!'),
+        Optional()
+    ])
+    custom_subject = SelectField('Email Subject', choices=[
+        ('subject1', 'Enroll {name} for Community Solar & Start Saving Today'),
+        ('subject2', 'RE: Enroll {name} for Community Solar & Start Saving'),
+        ('subject3', 'Follow-up: Enroll {name} for Community Solar & Start Saving'),
+        ('subject4', 'Reminder: Enroll {name} for Community Solar & Start Saving')
+    ], validators=[Optional()])
     submit = SubmitField('Send Campaign')
 
     # Predefined headers for each template
@@ -97,6 +111,14 @@ class EmailForm(FlaskForm):
         'template-2.html': 'RE: Enroll {name} for Community Solar & Start Saving',
         'template-3.html': 'Follow-up: Enroll {name} for Community Solar & Start Saving',
         'template-4.html': 'Reminder: Enroll {name} for Community Solar & Start Saving'
+    }
+
+    # Subject mapping for custom templates
+    CUSTOM_SUBJECTS = {
+        'subject1': 'Enroll {name} for Community Solar & Start Saving Today',
+        'subject2': 'RE: Enroll {name} for Community Solar & Start Saving',
+        'subject3': 'Follow-up: Enroll {name} for Community Solar & Start Saving',
+        'subject4': 'Reminder: Enroll {name} for Community Solar & Start Saving'
     }
 
     def __init__(self, *args, **kwargs):
@@ -109,138 +131,180 @@ class EmailForm(FlaskForm):
 def index():
     form = EmailForm()
     
-    # Handle template selection via AJAX
-    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        template = request.form.get('template')
-        if template in form.TEMPLATE_HEADERS:
-            return jsonify({
-                'subject': form.TEMPLATE_HEADERS[template].format(name='')
-            })
-        return jsonify({'error': 'Invalid template'}), 400
+    if request.method == 'POST':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Handle AJAX request for subject update
+            template = request.form.get('template')
+            if template in form.TEMPLATE_HEADERS:
+                return jsonify({'subject': form.TEMPLATE_HEADERS[template].format(name='')})
+            return jsonify({'error': 'Invalid template'}), 400
 
-    if form.validate_on_submit():
-        try:
-            # Initialize BulkEmailSender for logging
-            email_sender = BulkEmailSender()
-            logger.info("Starting new email campaign")
-            
-            # Get recipients from either text area or file
-            recipients = []
-            email_name_map = {}  # Dictionary to store email-name mappings
-            
-            if form.recipients.data:
-                logger.info("Processing manual email entries")
-                recipients.extend([email.strip() for email in form.recipients.data.split('\n') if email.strip()])
-                # For manual entries, use email username as name
-                for email in recipients:
-                    email_name_map[email] = email.split('@')[0]
-                logger.info(f"Processed {len(recipients)} manual email entries")
-            
-            if form.excel_file.data:
-                logger.info(f"Processing uploaded file: {form.excel_file.data.filename}")
-                file_emails, file_email_name_map = extract_emails_from_file(form.excel_file.data)
-                recipients.extend(file_emails)
-                # Update the email-name mapping with file data
-                email_name_map.update(file_email_name_map)
-                # For any emails without names, use email username
-                for email in file_emails:
-                    if email not in email_name_map:
+        if form.validate_on_submit():
+            try:
+                # Initialize BulkEmailSender for logging
+                email_sender = BulkEmailSender()
+                logger.info("Starting new email campaign")
+                
+                # Get recipients from either text area or file
+                recipients = []
+                email_name_map = {}  # Dictionary to store email-name mappings
+                
+                if form.recipients.data:
+                    logger.info("Processing manual email entries")
+                    recipients.extend([email.strip() for email in form.recipients.data.split('\n') if email.strip()])
+                    # For manual entries, use email username as name
+                    for email in recipients:
                         email_name_map[email] = email.split('@')[0]
-                logger.info(f"Processed {len(file_emails)} emails from file")
-            
-            if not recipients:
-                logger.warning("No recipients provided")
-                flash('Please provide recipients either in the text area or upload a file.', 'error')
-                return redirect(url_for('index'))
-            
-            # Remove duplicates and validate emails
-            recipients = list(set(recipients))
-            invalid_emails = [email for email in recipients if not '@' in email]
-            if invalid_emails:
-                logger.warning(f"Found invalid email addresses: {invalid_emails}")
-                flash(f'Invalid email addresses found: {", ".join(invalid_emails)}', 'error')
-                return redirect(url_for('index'))
-            
-            # Use the verified sender email
-            sender_email = "origination@clean-earth.org"
-            
-            # Get email template
-            email_content = get_email_template(form.template.data)
-            
-            # Send emails immediately
-            sg = SendGridAPIClient(os.getenv('SENDGRID_API_KEY'))
-            from_email = Email(sender_email, "Clean Earth Renewables")
-            
-            success_count = 0
-            failed_recipients = []
-            
-            # Update batch data
-            email_sender.batch_data.update({
-                'total_emails': len(recipients),
-                'subject': form.subject.data,
-                'template': form.template.data,
-                'source': 'manual' if form.recipients.data else 'file',
-                'file_name': form.excel_file.data.filename if form.excel_file.data else None
-            })
-            
-            for recipient in recipients:
-                to_email = To(recipient)
-                # Get the name for this recipient from the mapping
-                name = email_name_map.get(recipient, recipient.split('@')[0])
-                subject = form.TEMPLATE_HEADERS[form.template.data].format(name=name)
-                # Replace {Name} in the email content with the recipient's name
-                personalized_content = email_content.replace('{Name}', name)
-                content = Content("text/html", personalized_content)
-                mail = Mail(from_email, to_email, subject, content)
-                try:
-                    response = sg.send(mail)
-                    if response.status_code == 202:
-                        success_count += 1
-                        logger.info(f"Email sent successfully to {recipient}")
-                        email_sender.batch_data['successful_emails'] += 1
-                        email_sender.batch_data['recipients'].append({
-                            'email': recipient,
-                            'status': 'success',
-                            'timestamp': datetime.now().isoformat(),
-                            'response_code': response.status_code
-                        })
+                    logger.info(f"Processed {len(recipients)} manual email entries")
+                
+                if form.excel_file.data:
+                    logger.info(f"Processing uploaded file: {form.excel_file.data.filename}")
+                    file_emails, file_email_name_map = extract_emails_from_file(form.excel_file.data)
+                    recipients.extend(file_emails)
+                    # Update the email-name mapping with file data
+                    email_name_map.update(file_email_name_map)
+                    # For any emails without names, use email username
+                    for email in file_emails:
+                        if email not in email_name_map:
+                            email_name_map[email] = email.split('@')[0]
+                    logger.info(f"Processed {len(file_emails)} emails from file")
+                
+                if not recipients:
+                    logger.warning("No recipients provided")
+                    flash('Please provide recipients either in the text area or upload a file.', 'error')
+                    return redirect(url_for('index'))
+                
+                # Remove duplicates and validate emails
+                recipients = list(set(recipients))
+                invalid_emails = [email for email in recipients if not '@' in email]
+                if invalid_emails:
+                    logger.warning(f"Found invalid email addresses: {invalid_emails}")
+                    flash(f'Invalid email addresses found: {", ".join(invalid_emails)}', 'error')
+                    return redirect(url_for('index'))
+                
+                # Handle template selection
+                template_path = None
+                custom_subject = None
+                
+                if form.template_type.data == 'predefined':
+                    if not form.template.data:
+                        flash('Please select a predefined template.', 'error')
+                        return redirect(url_for('index'))
+                    template_path = os.path.join('templates', form.template.data)
+                else:
+                    if not form.custom_template.data:
+                        flash('Please upload a custom template.', 'error')
+                        return redirect(url_for('index'))
+                    if not form.custom_subject.data:
+                        flash('Please select a subject for your custom template.', 'error')
+                        return redirect(url_for('index'))
+                    
+                    # Save custom template
+                    custom_template_name = f"custom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+                    template_path = os.path.join('templates', 'custom_templates', custom_template_name)
+                    form.custom_template.data.save(template_path)
+                    
+                    # Get the selected subject template
+                    custom_subject = form.CUSTOM_SUBJECTS[form.custom_subject.data]
+                    
+                    # Save custom subject
+                    subjects_file = os.path.join('templates', 'custom_templates', 'subjects.json')
+                    subjects = {}
+                    if os.path.exists(subjects_file):
+                        with open(subjects_file, 'r') as f:
+                            subjects = json.load(f)
+                    subjects[custom_template_name] = custom_subject
+                    with open(subjects_file, 'w') as f:
+                        json.dump(subjects, f, indent=4)
+                
+                # Use the verified sender email
+                sender_email = "origination@clean-earth.org"
+                
+                # Get email template
+                with open(template_path, 'r') as file:
+                    email_content = file.read()
+                
+                # Send emails immediately
+                sg = SendGridAPIClient(os.getenv('SENDGRID_API_KEY'))
+                from_email = Email(sender_email, "Clean Earth Renewables")
+                
+                success_count = 0
+                failed_recipients = []
+                
+                # Update batch data
+                email_sender.batch_data.update({
+                    'total_emails': len(recipients),
+                    'subject': custom_subject if form.template_type.data == 'custom' else form.subject.data,
+                    'template': os.path.basename(template_path),
+                    'source': 'manual' if form.recipients.data else 'file',
+                    'file_name': form.excel_file.data.filename if form.excel_file.data else None
+                })
+                
+                for recipient in recipients:
+                    to_email = To(recipient)
+                    # Get the name for this recipient from the mapping
+                    name = email_name_map.get(recipient, recipient.split('@')[0])
+                    
+                    # Set subject based on template type
+                    if form.template_type.data == 'predefined':
+                        subject = form.TEMPLATE_HEADERS[form.template.data].format(name=name)
                     else:
-                        failed_recipients.append(f"{recipient} (Status: {response.status_code})")
-                        logger.error(f"Failed to send email to {recipient}: {response.status_code}")
+                        subject = custom_subject.format(name=name)
+                    
+                    # Replace {Name} in the email content with the recipient's name
+                    personalized_content = email_content.replace('{Name}', name)
+                    content = Content("text/html", personalized_content)
+                    mail = Mail(from_email, to_email, subject, content)
+                    
+                    try:
+                        response = sg.send(mail)
+                        if response.status_code == 202:
+                            success_count += 1
+                            logger.info(f"Email sent successfully to {recipient}")
+                            email_sender.batch_data['successful_emails'] += 1
+                            email_sender.batch_data['recipients'].append({
+                                'email': recipient,
+                                'status': 'success',
+                                'timestamp': datetime.now().isoformat(),
+                                'response_code': response.status_code
+                            })
+                        else:
+                            failed_recipients.append(f"{recipient} (Status: {response.status_code})")
+                            logger.error(f"Failed to send email to {recipient}: {response.status_code}")
+                            email_sender.batch_data['failed_emails'] += 1
+                            email_sender.batch_data['recipients'].append({
+                                'email': recipient,
+                                'status': 'failed',
+                                'timestamp': datetime.now().isoformat(),
+                                'error': f"Status code: {response.status_code}"
+                            })
+                    except Exception as e:
+                        failed_recipients.append(f"{recipient} ({str(e)})")
+                        logger.error(f"Error sending email to {recipient}: {str(e)}")
                         email_sender.batch_data['failed_emails'] += 1
                         email_sender.batch_data['recipients'].append({
                             'email': recipient,
                             'status': 'failed',
                             'timestamp': datetime.now().isoformat(),
-                            'error': f"Status code: {response.status_code}"
+                            'error': str(e)
                         })
-                except Exception as e:
-                    failed_recipients.append(f"{recipient} ({str(e)})")
-                    logger.error(f"Error sending email to {recipient}: {str(e)}")
-                    email_sender.batch_data['failed_emails'] += 1
-                    email_sender.batch_data['recipients'].append({
-                        'email': recipient,
-                        'status': 'failed',
-                        'timestamp': datetime.now().isoformat(),
-                        'error': str(e)
-                    })
-                    continue
-            
-            # Save batch summary
-            email_sender.save_batch_summary()
-            
-            # Show appropriate success/error messages
-            if success_count > 0:
-                flash(f'Successfully sent emails to {success_count} recipients!', 'success')
-            if failed_recipients:
-                flash(f'Failed to send campaign emails to: {", ".join(failed_recipients)}', 'error')
-            
-            return redirect(url_for('index'))
-            
-        except Exception as e:
-            logger.error(f"Error in email sending process: {str(e)}", exc_info=True)
-            flash(f'Error sending emails: {str(e)}', 'error')
-            return redirect(url_for('index'))
+                        continue
+                
+                # Save batch summary
+                email_sender.save_batch_summary()
+                
+                # Show appropriate success/error messages
+                if success_count > 0:
+                    flash(f'Successfully sent emails to {success_count} recipients!', 'success')
+                if failed_recipients:
+                    flash(f'Failed to send campaign emails to: {", ".join(failed_recipients)}', 'error')
+                
+                return redirect(url_for('index'))
+                
+            except Exception as e:
+                logger.error(f"Error in email sending process: {str(e)}", exc_info=True)
+                flash(f'Error sending emails: {str(e)}', 'error')
+                return redirect(url_for('index'))
     
     return render_template('index.html', form=form)
 

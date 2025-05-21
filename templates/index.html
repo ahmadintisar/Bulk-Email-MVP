@@ -63,29 +63,79 @@
 
                         <div class="mb-4">
                             <label class="form-label">
-                                <i class="fas fa-heading me-2"></i>{{ form.subject.label }}
+                                <i class="fas fa-envelope me-2"></i>Template Type
                             </label>
-                            {{ form.subject(class="form-control", placeholder="Enter email subject", readonly=true) }}
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>Subject will be automatically set based on the selected template.
-                            </small>
-                            {% if form.subject.errors %}
+                            {{ form.template_type(class="form-select", onchange="toggleTemplateFields(this.value)") }}
+                            {% if form.template_type.errors %}
                                 <div class="text-danger mt-1">
-                                    {% for error in form.subject.errors %}
+                                    {% for error in form.template_type.errors %}
                                         {{ error }}
                                     {% endfor %}
                                 </div>
                             {% endif %}
                         </div>
 
-                        <div class="mb-4">
+                        <div id="predefined-template-section" class="mb-4">
                             <label class="form-label">
-                                <i class="fas fa-envelope me-2"></i>{{ form.template.label }}
+                                <i class="fas fa-file-alt me-2"></i>{{ form.template.label }}
                             </label>
                             {{ form.template(class="form-select", onchange="updateSubject(this)") }}
                             {% if form.template.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in form.template.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div id="custom-template-section" class="mb-4" style="display: none;">
+                            <label class="form-label">
+                                <i class="fas fa-upload me-2"></i>{{ form.custom_template.label }}
+                            </label>
+                            <div class="input-group">
+                                {{ form.custom_template(class="form-control") }}
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Upload an HTML template file. The template should use {Name} as a placeholder for recipient names.
+                            </small>
+                            {% if form.custom_template.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.custom_template.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <div class="mt-3">
+                                <label class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>Email Subject
+                                </label>
+                                {{ form.custom_subject(class="form-select") }}
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>Select a subject for your custom template. The {name} placeholder will be replaced with the recipient's name.
+                                </small>
+                                {% if form.custom_subject.errors %}
+                                    <div class="text-danger mt-1">
+                                        {% for error in form.custom_subject.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4" id="subject-section">
+                            <label class="form-label">
+                                <i class="fas fa-heading me-2"></i>Subject
+                            </label>
+                            {{ form.subject(class="form-control", placeholder="Enter email subject", id="subject-field", readonly=true) }}
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Subject will be automatically set based on the selected template or subject.
+                            </small>
+                            {% if form.subject.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.subject.errors %}
                                         {{ error }}
                                     {% endfor %}
                                 </div>
@@ -118,14 +168,50 @@
 
 <script>
 const templateHeaders = {
-    'email_template.html': 'Enroll_ {name} for Community Solar & Start Saving Today',
-    'template-2.html': 'RE: Enroll_ {name} for Community Solar & Start Saving',
-    'template-3.html': 'Follow-up: Enroll_ {name} for Community Solar & Start Saving',
-    'template-4.html': 'Reminder: Enroll_ {name} for Community Solar & Start Saving'
+    'email_template.html': 'Enroll {name} for Community Solar & Start Saving Today',
+    'template-2.html': 'RE: Enroll {name} for Community Solar & Start Saving',
+    'template-3.html': 'Follow-up: Enroll {name} for Community Solar & Start Saving',
+    'template-4.html': 'Reminder: Enroll {name} for Community Solar & Start Saving'
 };
 
+const customSubjects = {
+    'subject1': 'Enroll {name} for Community Solar & Start Saving Today',
+    'subject2': 'RE: Enroll {name} for Community Solar & Start Saving',
+    'subject3': 'Follow-up: Enroll {name} for Community Solar & Start Saving',
+    'subject4': 'Reminder: Enroll {name} for Community Solar & Start Saving'
+};
+
+function toggleTemplateFields(templateType) {
+    const predefinedSection = document.getElementById('predefined-template-section');
+    const customSection = document.getElementById('custom-template-section');
+    const subjectSection = document.getElementById('subject-section');
+    const subjectField = document.getElementById('subject-field');
+    
+    if (templateType === 'predefined') {
+        predefinedSection.style.display = 'block';
+        customSection.style.display = 'none';
+        subjectSection.style.display = 'block';
+        subjectField.readOnly = true;
+        // Update subject based on selected template
+        const templateSelect = document.querySelector('select[name="template"]');
+        if (templateSelect) {
+            updateSubject(templateSelect);
+        }
+    } else {
+        predefinedSection.style.display = 'none';
+        customSection.style.display = 'block';
+        subjectSection.style.display = 'none';
+        subjectField.readOnly = true;
+        // Update subject based on selected custom subject
+        const customSubjectSelect = document.querySelector('select[name="custom_subject"]');
+        if (customSubjectSelect) {
+            updateCustomSubject(customSubjectSelect);
+        }
+    }
+}
+
 function updateSubject(selectElement) {
-    const subjectField = document.querySelector('input[name="subject"]');
+    const subjectField = document.getElementById('subject-field');
     const template = selectElement.value;
     
     // Send AJAX request to get the updated subject
@@ -152,11 +238,25 @@ function updateSubject(selectElement) {
     });
 }
 
-// Initialize subject on page load
+function updateCustomSubject(selectElement) {
+    const subjectField = document.getElementById('subject-field');
+    const subject = selectElement.value;
+    subjectField.value = customSubjects[subject].format(name='');
+}
+
+// Initialize template fields on page load
 document.addEventListener('DOMContentLoaded', function() {
-    const templateSelect = document.querySelector('select[name="template"]');
-    if (templateSelect) {
-        updateSubject(templateSelect);
+    const templateTypeSelect = document.querySelector('select[name="template_type"]');
+    if (templateTypeSelect) {
+        toggleTemplateFields(templateTypeSelect.value);
+    }
+    
+    // Add event listener for custom subject selection
+    const customSubjectSelect = document.querySelector('select[name="custom_subject"]');
+    if (customSubjectSelect) {
+        customSubjectSelect.addEventListener('change', function() {
+            updateCustomSubject(this);
+        });
     }
 });
 </script>
