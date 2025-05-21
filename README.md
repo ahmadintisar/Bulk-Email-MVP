@@ -109,8 +109,9 @@ Bulk-Email-MVP/
 ├── app.py                 # Main application file
 ├── requirements.txt       # Python dependencies
 ├── .env                  # Environment variables
+├── cleanup.sh           # Cleanup script for custom templates
 ├── templates/            # Email templates
-│   ├── custom_templates/ # User uploaded templates
+│   ├── custom_templates/ # User uploaded templates (gitignored)
 │   └── index.html        # Main interface
 ├── static/              # Static assets
 └── email_logs/          # Campaign logs
@@ -156,3 +157,18 @@ Officially Licensed under Apache.
 ## Support
 
 For support, please contact origination@clean-earth.org
+
+## Development Notes
+
+### Custom Templates Management
+- Custom templates are stored in `templates/custom_templates/`
+- This directory is gitignored to prevent large files from being committed
+- Before pushing changes, run the cleanup script:
+  ```bash
+  chmod +x cleanup.sh  # Make script executable (first time only)
+  ./cleanup.sh        # Run cleanup
+  ```
+- The cleanup script will:
+  * Remove all custom HTML templates
+  * Clear the subjects.json file
+  * Maintain the directory structure
