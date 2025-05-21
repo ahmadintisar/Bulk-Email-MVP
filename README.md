@@ -1,29 +1,50 @@
-# Clean Earth Renewables Email Management System
+# Bulk Email Sender with Template Management
 
-A professional email management system built with Flask and SendGrid, designed for Clean Earth Renewables to handle bulk email communications with enhanced analytics and deliverability features.
+A Flask-based bulk email sending application with template management and real-time analytics.
 
 ## Features
 
-- **Bulk Email Sending**: Send professional emails to multiple recipients simultaneously
-- **Real-time Analytics Dashboard**: Monitor email performance with interactive charts
-- **Email Templates**: Pre-designed templates for consistent branding
-- **Delivery Tracking**: Track opens, clicks, and bounces
-- **Auto-refresh Analytics**: Real-time updates every 20 seconds
-- **Responsive Design**: Modern UI that works on all devices
-- **Professional Branding**: Clean Earth Renewables' green theme throughout
+### Email Campaign Management
+- Send bulk emails to multiple recipients
+- Support for both manual email entry and file upload (Excel/CSV)
+- Automatic email validation and duplicate removal
+- Batch processing with progress tracking
+- Comprehensive error handling and logging
 
-## Prerequisites
+### Template Management
+- Two template options:
+  * Predefined templates with automatic subject lines
+  * Custom HTML template upload with selectable subjects
+- Dynamic subject line generation
+- Automatic name placeholder replacement
+- Template preview functionality
+- Secure template storage and management
 
-- Python 3.8 or higher
-- SendGrid API key
-- Domain with configured SPF, DKIM, and DMARC records
+### Analytics Dashboard
+- Real-time SendGrid analytics integration
+- 20-second refresh rate for live updates
+- Key metrics tracking:
+  * Email delivery statistics
+  * Open and click rates
+  * Bounce and spam reports
+  * Campaign performance
+  * Geographic distribution
+  * Device and client analytics
+
+### Security Features
+- Secure file upload handling
+- HTML content sanitization
+- XSS prevention
+- Access control and authentication
+- Secure template storage
+- API key protection
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/clean-earth-email.git
-cd clean-earth-email
+git clone [repository-url]
+cd Bulk-Email-MVP
 ```
 
 2. Create and activate a virtual environment:
@@ -37,69 +58,88 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file in the root directory with your configuration:
-```env
-SENDGRID_API_KEY=your_sendgrid_api_key
-MAIL_DEFAULT_SENDER=your_verified_sender_email
+4. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
-## Email Authentication Setup
-
-For optimal email deliverability, configure the following DNS records for your domain:
-
-### SPF Record
-```
-v=spf1 include:sendgrid.net ~all
-```
-
-### DKIM Record
-Add the CNAME record provided by SendGrid in your domain settings.
-
-### DMARC Record
-```
-v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc@yourdomain.com
-```
-
-## Usage
-
-1. Start the application:
+5. Initialize the application:
 ```bash
 python app.py
 ```
 
-2. Access the web interface at `http://localhost:5000`
+## Usage
 
-3. Navigate between pages:
-   - **Email Campaign**: Compose and send bulk emails
-   - **Dashboard**: View email analytics and performance metrics
+### Sending Emails
 
-## Email Sending
+1. **Choose Template Type**
+   - Select between predefined templates or custom template upload
+   - For predefined templates, choose from available options
+   - For custom templates, upload HTML file and select subject
 
-1. Enter recipient email addresses (one per line)
-2. Add a subject line
-3. Include an optional custom message
-4. Click "Send Campaign" to deliver
+2. **Add Recipients**
+   - Enter email addresses manually (one per line)
+   - Or upload Excel/CSV file with email addresses
+   - System automatically detects email columns
 
-## Analytics Dashboard
+3. **Send Campaign**
+   - Review template and subject
+   - Click "Send Campaign" to start
+   - Monitor progress in real-time
 
-The dashboard provides:
-- Total emails sent
-- Open rates
-- Click rates
-- Bounce rates
-- Interactive charts for:
-  - Email activity over time
-  - Delivery statistics
-- Recent activity table
-- Auto-refresh functionality
+### Analytics Dashboard
 
-## Security Features
+1. **View Campaign Statistics**
+   - Access dashboard for real-time metrics
+   - Monitor delivery rates and engagement
+   - Track geographic distribution
+   - Analyze device and client data
 
-- CSRF protection
-- Secure password handling
-- Environment variable configuration
-- Input validation
-- Rate limiting
+2. **Batch Activity**
+   - View detailed campaign history
+   - Track success and failure rates
+   - Monitor processing times
+   - Access detailed logs
+
+## File Structure
+
+```
+Bulk-Email-MVP/
+├── app.py                 # Main application file
+├── requirements.txt       # Python dependencies
+├── .env                  # Environment variables
+├── templates/            # Email templates
+│   ├── custom_templates/ # User uploaded templates
+│   └── index.html        # Main interface
+├── static/              # Static assets
+└── email_logs/          # Campaign logs
+```
+
+## Dependencies
+
+- Flask
+- SendGrid
+- pandas
+- python-dotenv
+- plotly
+- Other requirements listed in requirements.txt
+
+## Security Considerations
+
+- All file uploads are validated and sanitized
+- HTML content is processed securely
+- API keys are stored in environment variables
+- Access control is implemented
+- Regular security audits are performed
+
+## Performance Optimization
+
+- Efficient template processing
+- Optimized file handling
+- Background processing for large batches
+- Cached analytics data
+- Rate limit management
 
 ## Contributing
 
@@ -111,17 +151,8 @@ The dashboard provides:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+[Your License Here]
 
 ## Support
 
-For support, please contact:
-- Email: support@clean-earth.org
-- Website: https://clean-earth.org
-
-## Acknowledgments
-
-- SendGrid for email delivery infrastructure
-- Flask for the web framework
-- Bootstrap for the UI components
-- Plotly for interactive charts 
+For support, please contact [Your Contact Information] 
