@@ -151,8 +151,8 @@ Bulk-Email-MVP/
 
 ## License
 
-[Your License Here]
+Officially Licensed under Apache.
 
 ## Support
 
-For support, please contact [Your Contact Information] 
+For support, please contact origination@clean-earth.org
