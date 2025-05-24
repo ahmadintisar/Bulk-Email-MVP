@@ -30,6 +30,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# Create custom_templates directory if it doesn't exist
+custom_templates_dir = os.path.join('templates', 'custom_templates')
+if not os.path.exists(custom_templates_dir):
+    os.makedirs(custom_templates_dir)
+
 # Set Pakistan timezone
 PAKISTAN_TZ = pytz.timezone('Asia/Karachi')
 
